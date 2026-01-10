@@ -1,6 +1,35 @@
-import { parse } from "acorn";
+import { parse, Node } from "acorn";
 
-type AnyNode = any;
+interface Literal extends Node {
+  type: "Literal";
+  value: string | number | boolean | null;
+}
+
+interface Property extends Node {
+  type: "Property";
+  key: Node & { name?: string; value?: string | number };
+  value: Node;
+}
+
+interface ObjectExpression extends Node {
+  type: "ObjectExpression";
+  properties: Property[];
+}
+
+interface ArrayExpression extends Node {
+  type: "ArrayExpression";
+  elements: (Node | null)[];
+}
+
+interface CallExpression extends Node {
+  type: "CallExpression";
+  arguments: Node[];
+}
+
+interface Program extends Node {
+  type: "Program";
+  body: Array<Node & { expression?: Node }>;
+}
 
 export type ImgArgs = {
   file: string;
@@ -47,17 +76,23 @@ export function parseImgArgs(argsText: string): { ok: true; data: ImgArgs } | { 
   const ast = parseAsCallArgs(argsText);
   if (!ast) return { ok: false, reason: "引数の解析に失敗しました（JSとして解釈できません）" };
 
-  const args: AnyNode[] = ast.args;
+  const args = ast.args;
   if (args.length < 1) return { ok: false, reason: "第1引数（file）がありません" };
 
-  if (args[0].type !== "Literal" || typeof args[0].value !== "string") {
+  const firstArg = args[0];
+  if (firstArg.type !== "Literal") {
+    return { ok: false, reason: "file が文字列リテラルではありません（変数/式は未対応）" };
+  }
+
+  const literal = firstArg as Literal;
+  if (typeof literal.value !== "string") {
     return { ok: false, reason: "file が文字列リテラルではありません（変数/式は未対応）" };
   }
 
   return {
     ok: true,
     data: {
-      file: args[0].value,
+      file: literal.value,
       altIndex: args.length >= 2 ? 1 : null,
       widthIndex: args.length >= 3 ? 2 : null,
       heightIndex: args.length >= 4 ? 3 : null,
@@ -70,23 +105,27 @@ export function parsePictureOpts(argsText: string): { ok: true; data: PictureOpt
   const ast = parseAsCallArgs(argsText);
   if (!ast) return { ok: false, reason: "引数の解析に失敗しました（JSとして解釈できません）" };
 
-  const args: AnyNode[] = ast.args;
+  const args = ast.args;
   if (args.length < 1) return { ok: false, reason: "第1引数（opts）がありません" };
 
-  const obj = args[0];
-  if (obj.type !== "ObjectExpression") {
+  const firstArg = args[0];
+  if (firstArg.type !== "ObjectExpression") {
     return { ok: false, reason: "picture は optsオブジェクト形式のみ対応です（第1引数がObjectではありません）" };
   }
 
-  const out: PictureOpts = { objStart: obj.start, objEnd: obj.end };
+  const obj = firstArg as ObjectExpression;
+  const out: PictureOpts = { objStart: obj.start ?? 0, objEnd: obj.end ?? 0 };
 
-  for (const p of obj.properties ?? []) {
+  for (const p of obj.properties) {
     const key = p.key?.name ?? p.key?.value;
     if (!key) continue;
 
     if (key === "pc" || key === "sp") {
-      if (p.value?.type === "Literal" && typeof p.value.value === "string") {
-        (out as any)[key] = p.value.value;
+      if (p.value.type === "Literal") {
+        const literal = p.value as Literal;
+        if (typeof literal.value === "string") {
+          out[key] = literal.value;
+        }
       }
     }
 
@@ -114,16 +153,17 @@ export function parseCardsData(
   const ast = parseAsCallArgs(argsText);
   if (!ast) return { ok: false, reason: "引数の解析に失敗しました（JSとして解釈できません）" };
 
-  const args: AnyNode[] = ast.args;
+  const args = ast.args;
   if (args.length < 1) return { ok: false, reason: "第1引数がありません" };
 
   const first = args[0];
 
   if (first.type === "ArrayExpression") {
+    const arrayExpr = first as ArrayExpression;
     const items: CardsDataItem[] = [];
-    for (const el of first.elements ?? []) {
+    for (const el of arrayExpr.elements) {
       if (!el || el.type !== "ObjectExpression") continue;
-      const item = readSourcesFromObject(el, specs);
+      const item = readSourcesFromObject(el as ObjectExpression, specs);
       if (item) items.push(item);
     }
     if (items.length === 0) {
@@ -133,7 +173,7 @@ export function parseCardsData(
   }
 
   if (first.type === "ObjectExpression") {
-    const item = readSourcesFromObject(first, specs);
+    const item = readSourcesFromObject(first as ObjectExpression, specs);
     if (!item) return { ok: false, reason: "処理できる画像キーがありません（変数/式は未対応）" };
     return { ok: true, data: { kind: "object", items: [item] } };
   }
@@ -141,9 +181,9 @@ export function parseCardsData(
   return { ok: false, reason: "第1引数が配列/オブジェクトではありません（変数参照は未対応）" };
 }
 
-function readSourcesFromObject(obj: AnyNode, specs: DataSourceSpec[]): CardsDataItem | null {
-  const props = new Map<string, AnyNode>();
-  for (const p of obj.properties ?? []) {
+function readSourcesFromObject(obj: ObjectExpression, specs: DataSourceSpec[]): CardsDataItem | null {
+  const props = new Map<string, Node>();
+  for (const p of obj.properties) {
     const key = p.key?.name ?? p.key?.value;
     if (!key) continue;
     props.set(String(key), p.value);
@@ -153,9 +193,12 @@ function readSourcesFromObject(obj: AnyNode, specs: DataSourceSpec[]): CardsData
 
   for (const spec of specs) {
     const v = props.get(spec.imageKey);
-    if (v?.type !== "Literal" || typeof v.value !== "string") continue;
+    if (!v || v.type !== "Literal") continue;
 
-    const image = v.value;
+    const literal = v as Literal;
+    if (typeof literal.value !== "string") continue;
+
+    const image = literal.value;
 
     sources.push({
       image,
@@ -179,22 +222,21 @@ function readSourcesFromObject(obj: AnyNode, specs: DataSourceSpec[]): CardsData
  * argsText を JS の CallExpression 引数として parse して返す。
  * `f(${argsText})` の形で parse し、args の start/end を argsText 起点に補正する。
  */
-function parseAsCallArgs(argsText: string): { args: AnyNode[] } | null {
+function parseAsCallArgs(argsText: string): { args: Node[] } | null {
   try {
     const program = parse(`f(${argsText})`, {
       ecmaVersion: "latest",
-      sourceType: "script",
-      ranges: true
-    }) as AnyNode;
+      sourceType: "script"
+    }) as Program;
 
-    const expr = program.body?.[0]?.expression;
-    const call = expr && expr.type === "CallExpression" ? expr : null;
-    if (!call) return null;
+    const expr = program.body[0]?.expression;
+    if (!expr || expr.type !== "CallExpression") return null;
 
-    const args = (call.arguments ?? []).map((n: AnyNode) => ({
+    const call = expr as CallExpression;
+    const args = call.arguments.map((n) => ({
       ...n,
-      start: n.start - 2, // "f(" の2文字分
-      end: n.end - 2
+      start: (n.start ?? 0) - 2, // "f(" の2文字分
+      end: (n.end ?? 0) - 2
     }));
 
     return { args };

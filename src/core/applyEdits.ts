@@ -1,5 +1,5 @@
 import * as vscode from "vscode";
-import { findMixinCallAtCursor } from "./findMixinCall";
+import { findMixinCallAtCursor, FoundCall } from "./findMixinCall";
 import { getTargetRules, TargetRule } from "./rules";
 import { parseImgArgs, parsePictureOpts, parseCardsData } from "./parseArgs";
 import { resolveAndGetSize } from "./imageSize";
@@ -57,7 +57,7 @@ function pickRule(rules: TargetRule[], name: string): TargetRule | null {
 
 async function handleImgArgs(
   editor: vscode.TextEditor,
-  found: { argsText: string } & any,
+  found: FoundCall,
   mode: "full" | "half"
 ) {
   const parsed = parseImgArgs(found.argsText);
@@ -72,7 +72,7 @@ async function handleImgArgs(
 
 async function handlePictureOpts(
   editor: vscode.TextEditor,
-  found: { argsText: string } & any,
+  found: FoundCall,
   mode: "full" | "half"
 ) {
   const parsed = parsePictureOpts(found.argsText);
@@ -97,7 +97,7 @@ async function handlePictureOpts(
 
 async function handleDataArray(
   editor: vscode.TextEditor,
-  found: { argsText: string } & any,
+  found: FoundCall,
   mode: "full" | "half",
   rule: Extract<TargetRule, { type: "dataArray" }>
 ) {
@@ -136,8 +136,8 @@ function scale(w: number, h: number, mode: "full" | "half") {
   return { width: Math.round(w / 2), height: Math.round(h / 2) };
 }
 
-async function replaceArgsText(editor: vscode.TextEditor, found: any, newArgsText: string) {
-  const callText = found.callText as string;
+async function replaceArgsText(editor: vscode.TextEditor, found: FoundCall, newArgsText: string) {
+  const callText = found.callText;
   const openParen = callText.indexOf("(");
   const closeParen = callText.lastIndexOf(")");
   const startOffset = openParen + 1;
@@ -182,7 +182,7 @@ function patchImgArgs(argsText: string, width: number, height: number): string {
 
 function patchPictureOpts(
   argsText: string,
-  info: any,
+  info: { objStart: number; objEnd: number },
   pc: { width: number; height: number } | null,
   sp: { width: number; height: number } | null
 ): string {

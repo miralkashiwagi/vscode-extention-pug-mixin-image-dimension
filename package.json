@@ -1,7 +1,8 @@
 {
   "name": "pug-mixin-image-dimension",
   "displayName": "pug-mixin-image-dimension",
-  "description": "",
+  "publisher": "miral-kashiwagi",
+  "description": "Pugで記述された mixin 呼び出しから画像ファイルを解析し、実際の画像サイズ（width / height）を自動挿入",
   "version": "0.0.1",
   "engines": {
     "vscode": "^1.99.0"
@@ -55,8 +56,14 @@
           "type": "array",
           "description": "mixin名と画像サイズ挿入ルールの対応表",
           "default": [
-            { "name": "img", "type": "imgArgs" },
-            { "name": "picture", "type": "pictureOpts" },
+            {
+              "name": "img",
+              "type": "imgArgs"
+            },
+            {
+              "name": "picture",
+              "type": "pictureOpts"
+            },
             {
               "name": "c_cards",
               "type": "dataArray",
@@ -76,25 +83,34 @@
           ],
           "items": {
             "type": "object",
-            "required": ["name", "type"],
+            "required": [
+              "name",
+              "type"
+            ],
             "properties": {
               "name": {
                 "type": "string",
                 "description": "検出対象の mixin 名（+ は不要）"
               },
-
               "type": {
                 "type": "string",
-                "enum": ["imgArgs", "pictureOpts", "dataArray"],
+                "enum": [
+                  "imgArgs",
+                  "pictureOpts",
+                  "dataArray"
+                ],
                 "description": "処理タイプ"
               },
-
               "sources": {
                 "type": "array",
                 "description": "dataArray 用：1要素内に複数画像（PC/SP等）がある場合の定義",
                 "items": {
                   "type": "object",
-                  "required": ["imageKey", "widthKey", "heightKey"],
+                  "required": [
+                    "imageKey",
+                    "widthKey",
+                    "heightKey"
+                  ],
                   "properties": {
                     "imageKey": {
                       "type": "string",
@@ -112,7 +128,7 @@
                 }
               }
             }
-          }         
+          }
         },
         "PugMixinImageDimension.imagesRoot": {
           "type": "string",
@@ -134,6 +150,7 @@
     "test": "vscode-test"
   },
   "devDependencies": {
+    "@types/acorn": "^4.0.6",
     "@types/mocha": "^10.0.10",
     "@types/node": "22.x",
     "@types/vscode": "^1.108.0",
