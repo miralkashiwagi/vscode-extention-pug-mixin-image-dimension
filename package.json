@@ -1,0 +1,165 @@
+{
+  "name": "pug-mixin-image-dimension",
+  "displayName": "pug-mixin-image-dimension",
+  "description": "",
+  "version": "0.0.1",
+  "engines": {
+    "vscode": "^1.99.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "activationEvents": [],
+  "main": "./dist/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "PugMixinImageDimension.insertFull",
+        "title": "Insert image size (full)"
+      },
+      {
+        "command": "PugMixinImageDimension.insertHalf",
+        "title": "Insert image size (half)"
+      }
+    ],
+    "keybindings": [
+      {
+        "command": "PugMixinImageDimension.insertFull",
+        "key": "ctrl+alt+1",
+        "mac": "cmd+alt+1",
+        "when": "resourceExtname == '.pug'"
+      },
+      {
+        "command": "PugMixinImageDimension.insertHalf",
+        "key": "ctrl+alt+2",
+        "mac": "cmd+alt+2",
+        "when": "resourceExtname == '.pug'"
+      }
+    ],
+    "menus": {
+      "editor/context": [
+        {
+          "command": "PugMixinImageDimension.insertFull",
+          "when": "editorLangId == pug"
+        },
+        {
+          "command": "PugMixinImageDimension.insertHalf",
+          "when": "editorLangId == pug"
+        }
+      ]
+    },
+    "configuration": {
+      "title": "GG Pug Image Dimension",
+      "properties": {
+        "PugMixinImageDimension.targetRules": {
+          "type": "array",
+          "description": "mixin名と画像サイズ挿入ルールの対応表",
+          "default": [
+            { "name": "img", "type": "imgArgs" },
+            { "name": "picture", "type": "pictureOpts" },
+            {
+              "name": "c_cards",
+              "type": "dataArray",
+              "sources": [
+                {
+                  "imageKeys": ["imagePc", "pc"],
+                  "widthKey": "width",
+                  "heightKey": "height"
+                },
+                {
+                  "imageKeys": ["imageSp", "sp"],
+                  "widthKey": "widthSp",
+                  "heightKey": "heightSp"
+                }
+              ]
+            }
+          ],
+          "items": {
+            "type": "object",
+            "required": ["name", "type"],
+            "properties": {
+              "name": {
+                "type": "string",
+                "description": "検出対象の mixin 名（+ は不要）"
+              },
+
+              "type": {
+                "type": "string",
+                "enum": ["imgArgs", "pictureOpts", "dataArray"],
+                "description": "処理タイプ"
+              },
+
+              "sources": {
+                "type": "array",
+                "description": "dataArray 用：1要素内に複数画像（PC/SP等）がある場合の定義",
+                "items": {
+                  "type": "object",
+                  "required": ["imageKeys", "widthKey", "heightKey"],
+                  "properties": {
+                    "imageKeys": {
+                      "type": "array",
+                      "items": { "type": "string" },
+                      "description": "画像ファイル名が入るキー候補（最初に一致したものを使用）"
+                    },
+                    "widthKey": {
+                      "type": "string",
+                      "description": "挿入する width のキー名"
+                    },
+                    "heightKey": {
+                      "type": "string",
+                      "description": "挿入する height のキー名"
+                    }
+                  }
+                }
+              }
+            }
+          }         
+        },
+        "PugMixinImageDimension.imagesRoot": {
+          "type": "string",
+          "default": "app/assets/images",
+          "description": "プロジェクトルートからの画像ディレクトリパス"
+        },
+        "PugMixinImageDimension.globFallback": {
+          "type": "boolean",
+          "default": true,
+          "description": "If the image file is not found directly under imagesRoot, search workspace by glob."
+        },
+        "PugMixinImageDimension.overwriteExisting": {
+          "type": "boolean",
+          "default": true,
+          "description": "Overwrite existing width/height values if present."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run package",
+    "compile": "webpack",
+    "watch": "webpack --watch",
+    "package": "webpack --mode production --devtool hidden-source-map",
+    "compile-tests": "tsc -p . --outDir out",
+    "watch-tests": "tsc -p . -w --outDir out",
+    "pretest": "npm run compile-tests && npm run compile && npm run lint",
+    "lint": "eslint src",
+    "test": "vscode-test"
+  },
+  "devDependencies": {
+    "@types/mocha": "^10.0.10",
+    "@types/node": "22.x",
+    "@types/vscode": "^1.108.0",
+    "@vscode/test-cli": "^0.0.12",
+    "@vscode/test-electron": "^2.5.2",
+    "eslint": "^9.39.2",
+    "ts-loader": "^9.5.4",
+    "typescript": "^5.9.3",
+    "typescript-eslint": "^8.52.0",
+    "webpack": "^5.104.1",
+    "webpack-cli": "^6.0.1"
+  },
+  "dependencies": {
+    "acorn": "^8.15.0",
+    "fast-glob": "^3.3.3",
+    "image-size": "^2.0.2"
+  }
+}
