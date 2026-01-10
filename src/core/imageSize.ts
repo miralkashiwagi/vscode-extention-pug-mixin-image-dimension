@@ -11,7 +11,7 @@ const UNSUPPORTED_EXT = new Set([".avif"]); // 安定優先：まずは未対応
 export async function resolveAndGetSize(file: string): Promise<ImageSize> {
   const cfg = vscode.workspace.getConfiguration("PugMixinImageDimension");
   const imagesRootRel = cfg.get<string>("imagesRoot", "app/assets/images");
-  const globFallback = cfg.get<boolean>("globFallback", true);
+  const globFallback = true;
 
   const ws = vscode.workspace.workspaceFolders?.[0];
   if (!ws) throw new Error("workspace が開かれていません");

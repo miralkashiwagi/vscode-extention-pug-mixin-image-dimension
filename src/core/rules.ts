@@ -9,7 +9,7 @@ export type TargetRule =
       name: string;
       type: "dataArray";
       sources: Array<{
-        imageKeys: string[];
+        imageKey: string;
         widthKey: string;
         heightKey: string;
       }>;
@@ -24,8 +24,8 @@ export function getTargetRules(): TargetRule[] {
       name: "c_cards",
       type: "dataArray",
       sources: [
-        { imageKeys: ["imagePc", "pc"], widthKey: "width", heightKey: "height" },
-        { imageKeys: ["imageSp", "sp"], widthKey: "widthSp", heightKey: "heightSp" }
+        { imageKey: "imagePc", widthKey: "width", heightKey: "height" },
+        { imageKey: "imageSp", widthKey: "widthSp", heightKey: "heightSp" }
       ]
     }
   ]);
@@ -58,13 +58,11 @@ export function getTargetRules(): TargetRule[] {
       const sources =
         sourcesRaw
           ?.map((s: any) => ({
-            imageKeys: Array.isArray(s?.imageKeys)
-              ? s.imageKeys.map((x: any) => String(x).trim()).filter(Boolean)
-              : [],
+            imageKey: String(s?.imageKey ?? "").trim(),
             widthKey: String(s?.widthKey ?? "").trim(),
             heightKey: String(s?.heightKey ?? "").trim()
           }))
-          .filter((s: any) => s.imageKeys.length > 0 && s.widthKey && s.heightKey) ?? [];
+          .filter((s: any) => s.imageKey && s.widthKey && s.heightKey) ?? [];
 
       // 後方互換なし：sources が無ければ無効
       if (sources.length === 0) continue;

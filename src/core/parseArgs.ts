@@ -22,7 +22,7 @@ export type PictureOpts = {
 };
 
 // ---- dataArray multi-source types ----
-export type DataSourceSpec = { imageKeys: string[]; widthKey: string; heightKey: string };
+export type DataSourceSpec = { imageKey: string; widthKey: string; heightKey: string };
 
 export type CardsDataSourceFound = {
   image: string;
@@ -152,17 +152,10 @@ function readSourcesFromObject(obj: AnyNode, specs: DataSourceSpec[]): CardsData
   const sources: CardsDataSourceFound[] = [];
 
   for (const spec of specs) {
-    let image: string | null = null;
+    const v = props.get(spec.imageKey);
+    if (v?.type !== "Literal" || typeof v.value !== "string") continue;
 
-    for (const k of spec.imageKeys) {
-      const v = props.get(k);
-      if (v?.type === "Literal" && typeof v.value === "string") {
-        image = v.value;
-        break;
-      }
-    }
-
-    if (!image) continue;
+    const image = v.value;
 
     sources.push({
       image,

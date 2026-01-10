@@ -27,13 +27,13 @@
         "command": "PugMixinImageDimension.insertFull",
         "key": "ctrl+alt+1",
         "mac": "cmd+alt+1",
-        "when": "resourceExtname == '.pug'"
+        "when": "editorTextFocus && resourceExtname == '.pug'"
       },
       {
         "command": "PugMixinImageDimension.insertHalf",
         "key": "ctrl+alt+2",
         "mac": "cmd+alt+2",
-        "when": "resourceExtname == '.pug'"
+        "when": "editorTextFocus && resourceExtname == '.pug'"
       }
     ],
     "menus": {
@@ -62,12 +62,12 @@
               "type": "dataArray",
               "sources": [
                 {
-                  "imageKeys": ["imagePc", "pc"],
+                  "imageKey": "image",
                   "widthKey": "width",
                   "heightKey": "height"
                 },
                 {
-                  "imageKeys": ["imageSp", "sp"],
+                  "imageKey": "imageSp",
                   "widthKey": "widthSp",
                   "heightKey": "heightSp"
                 }
@@ -94,12 +94,11 @@
                 "description": "dataArray 用：1要素内に複数画像（PC/SP等）がある場合の定義",
                 "items": {
                   "type": "object",
-                  "required": ["imageKeys", "widthKey", "heightKey"],
+                  "required": ["imageKey", "widthKey", "heightKey"],
                   "properties": {
-                    "imageKeys": {
-                      "type": "array",
-                      "items": { "type": "string" },
-                      "description": "画像ファイル名が入るキー候補（最初に一致したものを使用）"
+                    "imageKey": {
+                      "type": "string",
+                      "description": "画像ファイル名が入るキー"
                     },
                     "widthKey": {
                       "type": "string",
@@ -119,16 +118,6 @@
           "type": "string",
           "default": "app/assets/images",
           "description": "プロジェクトルートからの画像ディレクトリパス"
-        },
-        "PugMixinImageDimension.globFallback": {
-          "type": "boolean",
-          "default": true,
-          "description": "If the image file is not found directly under imagesRoot, search workspace by glob."
-        },
-        "PugMixinImageDimension.overwriteExisting": {
-          "type": "boolean",
-          "default": true,
-          "description": "Overwrite existing width/height values if present."
         }
       }
     }

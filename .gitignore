@@ -6,3 +6,5 @@ node_modules
 *.vsix
 .output.txt
 .vscode/
+*.map
+*.js

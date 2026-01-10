@@ -26,20 +26,19 @@ export async function runInsert(opts: { mode: "full" | "half" }) {
   }
 
   const cfg = vscode.workspace.getConfiguration("PugMixinImageDimension");
-  const overwriteExisting = cfg.get<boolean>("overwriteExisting", true);
 
   try {
     switch (rule.type) {
       case "imgArgs":
-        await handleImgArgs(editor, found, opts.mode, overwriteExisting);
+        await handleImgArgs(editor, found, opts.mode);
         return;
 
       case "pictureOpts":
-        await handlePictureOpts(editor, found, opts.mode, overwriteExisting);
+        await handlePictureOpts(editor, found, opts.mode);
         return;
 
       case "dataArray":
-        await handleDataArray(editor, found, opts.mode, overwriteExisting, rule);
+        await handleDataArray(editor, found, opts.mode, rule);
         return;
 
       default:
@@ -59,8 +58,7 @@ function pickRule(rules: TargetRule[], name: string): TargetRule | null {
 async function handleImgArgs(
   editor: vscode.TextEditor,
   found: { argsText: string } & any,
-  mode: "full" | "half",
-  overwriteExisting: boolean
+  mode: "full" | "half"
 ) {
   const parsed = parseImgArgs(found.argsText);
   if (!parsed.ok) throw new Error(parsed.reason);
@@ -68,15 +66,14 @@ async function handleImgArgs(
   const size = await resolveAndGetSize(parsed.data.file);
   const scaled = scale(size.width, size.height, mode);
 
-  const newArgsText = patchImgArgs(found.argsText, scaled.width, scaled.height, overwriteExisting);
+  const newArgsText = patchImgArgs(found.argsText, scaled.width, scaled.height);
   await replaceArgsText(editor, found, newArgsText);
 }
 
 async function handlePictureOpts(
   editor: vscode.TextEditor,
   found: { argsText: string } & any,
-  mode: "full" | "half",
-  overwriteExisting: boolean
+  mode: "full" | "half"
 ) {
   const parsed = parsePictureOpts(found.argsText);
   if (!parsed.ok) throw new Error(parsed.reason);
@@ -94,7 +91,7 @@ async function handlePictureOpts(
   const pcScaled = pcSize ? scale(pcSize.width, pcSize.height, mode) : null;
   const spScaled = spSize ? scale(spSize.width, spSize.height, mode) : null;
 
-  const newArgsText = patchPictureOpts(found.argsText, parsed.data, pcScaled, spScaled, overwriteExisting);
+  const newArgsText = patchPictureOpts(found.argsText, parsed.data, pcScaled, spScaled);
   await replaceArgsText(editor, found, newArgsText);
 }
 
@@ -102,7 +99,6 @@ async function handleDataArray(
   editor: vscode.TextEditor,
   found: { argsText: string } & any,
   mode: "full" | "half",
-  overwriteExisting: boolean,
   rule: Extract<TargetRule, { type: "dataArray" }>
 ) {
   const parsed = parseCardsData(found.argsText, rule.sources);
@@ -122,8 +118,8 @@ async function handleDataArray(
       const size = await resolveAndGetSize(s.image);
       const scaled = scale(size.width, size.height, mode);
 
-      if (!s.hasWidth || overwriteExisting) propsToAdd.push(`${s.widthKey}: ${scaled.width}`);
-      if (!s.hasHeight || overwriteExisting) propsToAdd.push(`${s.heightKey}: ${scaled.height}`);
+      propsToAdd.push(`${s.widthKey}: ${scaled.width}`);
+      propsToAdd.push(`${s.heightKey}: ${scaled.height}`);
     }
 
     if (propsToAdd.length === 0) continue;
@@ -163,7 +159,7 @@ function offsetToPosition(doc: vscode.TextDocument, base: vscode.Position, callT
   return new vscode.Position(base.line + lineDelta, (lineDelta === 0 ? base.character : 0) + char);
 }
 
-function patchImgArgs(argsText: string, width: number, height: number, overwrite: boolean): string {
+function patchImgArgs(argsText: string, width: number, height: number): string {
   const parts = splitTopLevelArgs(argsText);
 
   // +img(file, alt) の想定で、width/height が無ければ追記
@@ -172,22 +168,14 @@ function patchImgArgs(argsText: string, width: number, height: number, overwrite
   }
 
   // width
-  if (overwrite) {
-    parts[2] = String(width);
-  } else if (isEmptyValue(parts[2])) {
-    parts[2] = String(width);
-  }
+  parts[2] = String(width);
 
   // height
   if (parts.length < 4) {
     return parts.concat([String(height)]).join(", ");
   }
 
-  if (overwrite) {
-    parts[3] = String(height);
-  } else if (isEmptyValue(parts[3])) {
-    parts[3] = String(height);
-  }
+  parts[3] = String(height);
 
   return parts.join(", ");
 }
@@ -196,20 +184,19 @@ function patchPictureOpts(
   argsText: string,
   info: any,
   pc: { width: number; height: number } | null,
-  sp: { width: number; height: number } | null,
-  overwrite: boolean
+  sp: { width: number; height: number } | null
 ): string {
   const objSrc = argsText.slice(info.objStart, info.objEnd);
 
   const toAdd: string[] = [];
 
   if (pc) {
-    if (!info.hasWidth || overwrite) toAdd.push(`width: ${pc.width}`);
-    if (!info.hasHeight || overwrite) toAdd.push(`height: ${pc.height}`);
+    toAdd.push(`width: ${pc.width}`);
+    toAdd.push(`height: ${pc.height}`);
   }
   if (sp) {
-    if (!info.hasWidthSp || overwrite) toAdd.push(`widthSp: ${sp.width}`);
-    if (!info.hasHeightSp || overwrite) toAdd.push(`heightSp: ${sp.height}`);
+    toAdd.push(`widthSp: ${sp.width}`);
+    toAdd.push(`heightSp: ${sp.height}`);
   }
 
   if (toAdd.length === 0) return argsText;
@@ -219,19 +206,43 @@ function patchPictureOpts(
 }
 
 /**
- * “ほどほどに” 整形を壊さずに ObjectLiteral にプロパティを追加するヒューリスティック。
+ * “ほどほどに” 整形を壊さずに ObjectLiteral にプロパティを追加または上書きするヒューリスティック。
+ * - 既存のキーがある場合は上書き
+ * - 存在しない場合は追加
  * - 単一行: `{ a: 1 }` → `{ a: 1, width: 100, height: 200 }`
  * - 複数行: `}` の直前にインデントして追加
  */
 function insertPropsIntoObjectLiteral(objSrc: string, props: string[]): string {
+  let result = objSrc;
+
+  for (const p of props) {
+    const colonIndex = p.indexOf(":");
+    if (colonIndex === -1) continue;
+    const key = p.slice(0, colonIndex).trim();
+    const value = p.slice(colonIndex + 1).trim();
+
+    // 既存のキーがあるか探す (単純な正規表現)
+    // キー: 値 の形式を探す。値はカンマ、閉じ括弧、改行などの手前まで。
+    const re = new RegExp(`(\\b${key}\\s*:\\s*)([^,} \n\r\t]+)`, "g");
+
+    if (re.test(result)) {
+      result = result.replace(re, `$1${value}`);
+    } else {
+      result = appendProp(result, p);
+    }
+  }
+
+  return result;
+}
+
+function appendProp(objSrc: string, prop: string): string {
   const isMultiLine = objSrc.includes("\n");
 
   if (!isMultiLine) {
     const inner = objSrc.trim().replace(/^\{\s*/, "").replace(/\s*\}$/, "");
     const trimmedInner = inner.trim();
-    const joined = props.join(", ");
-    if (trimmedInner === "") return `{ ${joined} }`;
-    return `{ ${trimmedInner.replace(/,\s*$/, "")}, ${joined} }`;
+    if (trimmedInner === "") return `{ ${prop} }`;
+    return `{ ${trimmedInner.replace(/,\s*$/, "")}, ${prop} }`;
   }
 
   const lines = objSrc.split("\n");
@@ -249,14 +260,9 @@ function insertPropsIntoObjectLiteral(objSrc: string, props: string[]): string {
     break;
   }
 
-  const insertLines = props.map(p => `${insertIndent}${p},`);
-  lines.splice(lines.length - 1, 0, ...insertLines);
+  const insertLine = `${insertIndent}${prop},`;
+  lines.splice(lines.length - 1, 0, insertLine);
   return lines.join("\n");
-}
-
-function isEmptyValue(src: string): boolean {
-  const t = src.trim();
-  return t === "null" || t === "undefined" || t === '""' || t === "''";
 }
 
 /**
