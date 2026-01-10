@@ -85,8 +85,28 @@ async function handlePictureOpts(
     throw new Error("opts.pc / opts.sp が見つかりません（文字列リテラルのみ対応）");
   }
 
-  const pcSize = pc ? await resolveAndGetSize(pc) : null;
-  const spSize = sp ? await resolveAndGetSize(sp) : null;
+  let pcSize = null;
+  let spSize = null;
+
+  if (pc) {
+    try {
+      pcSize = await resolveAndGetSize(pc);
+    } catch (e: any) {
+      vscode.window.showErrorMessage(e?.message ?? String(e));
+    }
+  }
+
+  if (sp) {
+    try {
+      spSize = await resolveAndGetSize(sp);
+    } catch (e: any) {
+      vscode.window.showErrorMessage(e?.message ?? String(e));
+    }
+  }
+
+  if (!pcSize && !spSize) {
+    throw new Error("画像が1つも取得できませんでした");
+  }
 
   const pcScaled = pcSize ? scale(pcSize.width, pcSize.height, mode) : null;
   const spScaled = spSize ? scale(spSize.width, spSize.height, mode) : null;
@@ -115,11 +135,15 @@ async function handleDataArray(
     const propsToAdd: string[] = [];
 
     for (const s of item.sources) {
-      const size = await resolveAndGetSize(s.image);
-      const scaled = scale(size.width, size.height, mode);
+      try {
+        const size = await resolveAndGetSize(s.image);
+        const scaled = scale(size.width, size.height, mode);
 
-      propsToAdd.push(`${s.widthKey}: ${scaled.width}`);
-      propsToAdd.push(`${s.heightKey}: ${scaled.height}`);
+        propsToAdd.push(`${s.widthKey}: ${scaled.width}`);
+        propsToAdd.push(`${s.heightKey}: ${scaled.height}`);
+      } catch (e: any) {
+        vscode.window.showErrorMessage(e?.message ?? String(e));
+      }
     }
 
     if (propsToAdd.length === 0) continue;
