@@ -3,7 +3,7 @@
   "displayName": "Pug Mixin Image Dimension",
   "publisher": "miral-kashiwagi",
   "description": "Pugで記述された mixin 呼び出しから画像ファイルを解析し、実際の画像サイズ（width / height）を自動挿入",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "engines": {
     "vscode": "^1.99.0"
   },
