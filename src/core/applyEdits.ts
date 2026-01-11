@@ -30,11 +30,11 @@ export async function runInsert(opts: { mode: "full" | "half" }) {
   try {
     switch (rule.type) {
       case "imgArgs":
-        await handleImgArgs(editor, found, opts.mode);
+        await handleImgArgs(editor, found, opts.mode, rule);
         return;
 
       case "pictureOpts":
-        await handlePictureOpts(editor, found, opts.mode);
+        await handlePictureOpts(editor, found, opts.mode, rule);
         return;
 
       case "dataArray":
@@ -58,24 +58,26 @@ function pickRule(rules: TargetRule[], name: string): TargetRule | null {
 async function handleImgArgs(
   editor: vscode.TextEditor,
   found: FoundCall,
-  mode: "full" | "half"
+  mode: "full" | "half",
+  rule: Extract<TargetRule, { type: "imgArgs" }>
 ) {
-  const parsed = parseImgArgs(found.argsText);
+  const parsed = parseImgArgs(found.argsText, rule);
   if (!parsed.ok) throw new Error(parsed.reason);
 
   const size = await resolveAndGetSize(parsed.data.file);
   const scaled = scale(size.width, size.height, mode);
 
-  const newArgsText = patchImgArgs(found.argsText, scaled.width, scaled.height);
+  const newArgsText = patchImgArgs(found.argsText, scaled.width, scaled.height, rule);
   await replaceArgsText(editor, found, newArgsText);
 }
 
 async function handlePictureOpts(
   editor: vscode.TextEditor,
   found: FoundCall,
-  mode: "full" | "half"
+  mode: "full" | "half",
+  rule: Extract<TargetRule, { type: "pictureOpts" }>
 ) {
-  const parsed = parsePictureOpts(found.argsText);
+  const parsed = parsePictureOpts(found.argsText, rule);
   if (!parsed.ok) throw new Error(parsed.reason);
 
   const pc = parsed.data.pc;
@@ -111,7 +113,7 @@ async function handlePictureOpts(
   const pcScaled = pcSize ? scale(pcSize.width, pcSize.height, mode) : null;
   const spScaled = spSize ? scale(spSize.width, spSize.height, mode) : null;
 
-  const newArgsText = patchPictureOpts(found.argsText, parsed.data, pcScaled, spScaled);
+  const newArgsText = patchPictureOpts(found.argsText, parsed.data, pcScaled, spScaled, rule);
   await replaceArgsText(editor, found, newArgsText);
 }
 
@@ -183,23 +185,30 @@ function offsetToPosition(doc: vscode.TextDocument, base: vscode.Position, callT
   return new vscode.Position(base.line + lineDelta, (lineDelta === 0 ? base.character : 0) + char);
 }
 
-function patchImgArgs(argsText: string, width: number, height: number): string {
+function patchImgArgs(
+  argsText: string,
+  width: number,
+  height: number,
+  opts?: { widthIndex?: number; heightIndex?: number }
+): string {
   const parts = splitTopLevelArgs(argsText);
 
-  // +img(file, alt) の想定で、width/height が無ければ追記
-  if (parts.length < 3) {
-    return parts.concat([String(width), String(height)]).join(", ");
+  const wIdx = opts?.widthIndex ?? 2;
+  const hIdx = opts?.heightIndex ?? 3;
+
+  // 必要な長さまで空文字で埋める
+  const maxIdx = Math.max(wIdx, hIdx);
+  while (parts.length <= maxIdx) {
+    parts.push("");
   }
 
-  // width
-  parts[2] = String(width);
+  parts[wIdx] = String(width);
+  parts[hIdx] = String(height);
 
-  // height
-  if (parts.length < 4) {
-    return parts.concat([String(height)]).join(", ");
+  // 末尾が連続して空文字なら削る（オプション）
+  while (parts.length > 0 && parts[parts.length - 1] === "") {
+    parts.pop();
   }
-
-  parts[3] = String(height);
 
   return parts.join(", ");
 }
@@ -208,19 +217,30 @@ function patchPictureOpts(
   argsText: string,
   info: { objStart: number; objEnd: number },
   pc: { width: number; height: number } | null,
-  sp: { width: number; height: number } | null
+  sp: { width: number; height: number } | null,
+  opts?: {
+    pcWidthKey?: string;
+    pcHeightKey?: string;
+    spWidthKey?: string;
+    spHeightKey?: string;
+  }
 ): string {
   const objSrc = argsText.slice(info.objStart, info.objEnd);
 
   const toAdd: string[] = [];
 
+  const pcWidthKey = opts?.pcWidthKey ?? "width";
+  const pcHeightKey = opts?.pcHeightKey ?? "height";
+  const spWidthKey = opts?.spWidthKey ?? "widthSp";
+  const spHeightKey = opts?.spHeightKey ?? "heightSp";
+
   if (pc) {
-    toAdd.push(`width: ${pc.width}`);
-    toAdd.push(`height: ${pc.height}`);
+    toAdd.push(`${pcWidthKey}: ${pc.width}`);
+    toAdd.push(`${pcHeightKey}: ${pc.height}`);
   }
   if (sp) {
-    toAdd.push(`widthSp: ${sp.width}`);
-    toAdd.push(`heightSp: ${sp.height}`);
+    toAdd.push(`${spWidthKey}: ${sp.width}`);
+    toAdd.push(`${spHeightKey}: ${sp.height}`);
   }
 
   if (toAdd.length === 0) return argsText;

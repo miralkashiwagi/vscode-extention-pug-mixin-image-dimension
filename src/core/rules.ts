@@ -3,8 +3,23 @@ import * as vscode from "vscode";
 export type RuleType = "imgArgs" | "pictureOpts" | "dataArray";
 
 export type TargetRule =
-  | { name: string; type: "imgArgs" }
-  | { name: string; type: "pictureOpts" }
+  | {
+      name: string;
+      type: "imgArgs";
+      altIndex?: number;
+      widthIndex?: number;
+      heightIndex?: number;
+    }
+  | {
+      name: string;
+      type: "pictureOpts";
+      pcKey?: string;
+      spKey?: string;
+      pcWidthKey?: string;
+      pcHeightKey?: string;
+      spWidthKey?: string;
+      spHeightKey?: string;
+    }
   | {
       name: string;
       type: "dataArray";
@@ -24,7 +39,7 @@ export function getTargetRules(): TargetRule[] {
       name: "c_cards",
       type: "dataArray",
       sources: [
-        { imageKey: "imagePc", widthKey: "width", heightKey: "height" },
+        { imageKey: "image", widthKey: "width", heightKey: "height" },
         { imageKey: "imageSp", widthKey: "widthSp", heightKey: "heightSp" }
       ]
     }
@@ -44,12 +59,27 @@ export function getTargetRules(): TargetRule[] {
     seen.add(key);
 
     if (type === "imgArgs") {
-      normalized.push({ name, type });
+      normalized.push({
+        name,
+        type,
+        altIndex: typeof r.altIndex === "number" ? r.altIndex : undefined,
+        widthIndex: typeof r.widthIndex === "number" ? r.widthIndex : undefined,
+        heightIndex: typeof r.heightIndex === "number" ? r.heightIndex : undefined
+      });
       continue;
     }
 
     if (type === "pictureOpts") {
-      normalized.push({ name, type });
+      normalized.push({
+        name,
+        type,
+        pcKey: typeof r.pcKey === "string" ? r.pcKey : undefined,
+        spKey: typeof r.spKey === "string" ? r.spKey : undefined,
+        pcWidthKey: typeof r.pcWidthKey === "string" ? r.pcWidthKey : undefined,
+        pcHeightKey: typeof r.pcHeightKey === "string" ? r.pcHeightKey : undefined,
+        spWidthKey: typeof r.spWidthKey === "string" ? r.spWidthKey : undefined,
+        spHeightKey: typeof r.spHeightKey === "string" ? r.spHeightKey : undefined
+      });
       continue;
     }
 

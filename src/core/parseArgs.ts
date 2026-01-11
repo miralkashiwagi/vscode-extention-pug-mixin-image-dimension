@@ -42,10 +42,10 @@ export type ImgArgs = {
 export type PictureOpts = {
   pc?: string;
   sp?: string;
-  hasWidth?: boolean;
-  hasHeight?: boolean;
-  hasWidthSp?: boolean;
-  hasHeightSp?: boolean;
+  hasPcWidth?: boolean;
+  hasPcHeight?: boolean;
+  hasSpWidth?: boolean;
+  hasSpHeight?: boolean;
   objStart: number; // argsText 内オフセット
   objEnd: number;   // argsText 内オフセット
 };
@@ -72,7 +72,10 @@ export type CardsData = {
   items: CardsDataItem[];
 };
 
-export function parseImgArgs(argsText: string): { ok: true; data: ImgArgs } | { ok: false; reason: string } {
+export function parseImgArgs(
+  argsText: string,
+  opts?: { altIndex?: number; widthIndex?: number; heightIndex?: number }
+): { ok: true; data: ImgArgs } | { ok: false; reason: string } {
   const ast = parseAsCallArgs(argsText);
   if (!ast) return { ok: false, reason: "引数の解析に失敗しました（JSとして解釈できません）" };
 
@@ -93,15 +96,25 @@ export function parseImgArgs(argsText: string): { ok: true; data: ImgArgs } | { 
     ok: true,
     data: {
       file: literal.value,
-      altIndex: args.length >= 2 ? 1 : null,
-      widthIndex: args.length >= 3 ? 2 : null,
-      heightIndex: args.length >= 4 ? 3 : null,
+      altIndex: opts?.altIndex !== undefined ? (args.length > opts.altIndex ? opts.altIndex : null) : (args.length >= 2 ? 1 : null),
+      widthIndex: opts?.widthIndex !== undefined ? (args.length > opts.widthIndex ? opts.widthIndex : null) : (args.length >= 3 ? 2 : null),
+      heightIndex: opts?.heightIndex !== undefined ? (args.length > opts.heightIndex ? opts.heightIndex : null) : (args.length >= 4 ? 3 : null),
       argsCount: args.length
     }
   };
 }
 
-export function parsePictureOpts(argsText: string): { ok: true; data: PictureOpts } | { ok: false; reason: string } {
+export function parsePictureOpts(
+  argsText: string,
+  opts?: {
+    pcKey?: string;
+    spKey?: string;
+    pcWidthKey?: string;
+    pcHeightKey?: string;
+    spWidthKey?: string;
+    spHeightKey?: string;
+  }
+): { ok: true; data: PictureOpts } | { ok: false; reason: string } {
   const ast = parseAsCallArgs(argsText);
   if (!ast) return { ok: false, reason: "引数の解析に失敗しました（JSとして解釈できません）" };
 
@@ -116,23 +129,30 @@ export function parsePictureOpts(argsText: string): { ok: true; data: PictureOpt
   const obj = firstArg as ObjectExpression;
   const out: PictureOpts = { objStart: obj.start ?? 0, objEnd: obj.end ?? 0 };
 
+  const pcKey = opts?.pcKey ?? "pc";
+  const spKey = opts?.spKey ?? "sp";
+  const pcWidthKey = opts?.pcWidthKey ?? "width";
+  const pcHeightKey = opts?.pcHeightKey ?? "height";
+  const spWidthKey = opts?.spWidthKey ?? "widthSp";
+  const spHeightKey = opts?.spHeightKey ?? "heightSp";
+
   for (const p of obj.properties) {
     const key = p.key?.name ?? p.key?.value;
     if (!key) continue;
 
-    if (key === "pc" || key === "sp") {
+    if (key === pcKey || key === spKey) {
       if (p.value.type === "Literal") {
         const literal = p.value as Literal;
         if (typeof literal.value === "string") {
-          out[key] = literal.value;
+          out[key === pcKey ? "pc" : "sp"] = literal.value;
         }
       }
     }
 
-    if (key === "width") out.hasWidth = true;
-    if (key === "height") out.hasHeight = true;
-    if (key === "widthSp") out.hasWidthSp = true;
-    if (key === "heightSp") out.hasHeightSp = true;
+    if (key === pcWidthKey) out.hasPcWidth = true;
+    if (key === pcHeightKey) out.hasPcHeight = true;
+    if (key === spWidthKey) out.hasSpWidth = true;
+    if (key === spHeightKey) out.hasSpHeight = true;
   }
 
   return { ok: true, data: out };

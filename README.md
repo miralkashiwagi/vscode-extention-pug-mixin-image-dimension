@@ -25,7 +25,7 @@
 
 ### 対応する書き方
 
-#### 1. img 形式
+#### 1. imgArgs（引数順序）形式
 
 ```pug
 +img("sample.jpg","")
@@ -39,7 +39,7 @@
 
 ---
 
-#### 2. picture(opts) 形式（PC / SP 対応）
+#### 2. pictureOpts（オブジェクトキー名） 形式（PC / SP 対応）
 
 ```pug
 +picture({ imagePc: "pc.jpg", imageSp: "sp.jpg" })
@@ -77,7 +77,7 @@
 
 ---
 
-### 設定による拡張性
+## 設定による拡張性
 
 * **対象 mixin 名**
 * **画像キー名（imagePc / imageSp など）**
@@ -87,9 +87,59 @@
 
 これにより、プロジェクトごとに異なる命名規則や mixin 構造にも、プラグインの改修なしで対応できます。
 
+
+### 設定のポイント
+#### 1. imgArgs（引数順序）の変更
+   もし +img(file, width, height, alt) のように alt を最後にしている場合は、以下のようにインデックスを調整してください。
+```
+{
+  "name": "img",
+  "type": "imgArgs",
+  "widthIndex": 1,
+  "heightIndex": 2,
+  "altIndex": 3
+}
+```
+
+#### 2. pictureOpts（オブジェクトキー名）の変更
+   例えば、SP用のキーを sp ではなく mobile にしたい、あるいは widthSp ではなく wSp にしたいといった場合は、該当するキー名を指定します。
+```
+{
+  "name": "picture",
+  "type": "pictureOpts",
+  "pcKey": "pc",
+  "pcWidthKey": "w",
+  "pcHeightKey": "h",
+  "spKey": "mobile",
+  "spWidthKey": "wSp",
+  "spHeightKey": "hSp"
+}
+```
+#### 3.dataArray（配列データ）形式
+例えば、SP用のキーを sp ではなく mobile にしたい、あるいは widthSp ではなく wSp にしたいといった場合は、該当するキー名を指定します。
+```
+{
+  "name": "c_cards",
+  "type": "dataArray",
+  "sources": [
+    {
+      "imageKey": "image",
+      "widthKey": "width",
+      "heightKey": "height"
+    },
+    {
+      "imageKey": "imageSp",
+      "widthKey": "widthSp",
+      "heightKey": "heightSp"
+    }
+  ]
+}
+
+```
+
 ---
 
-### 注意事項・制限
+## 注意事項・制限
 
 * 画像パスは **文字列リテラルのみ対応**（変数・式は対象外）
 * dataArray では **配列／オブジェクト直書きのみ対応**
@@ -97,7 +147,7 @@
 
 ---
 
-### 想定される利用シーン
+## 想定される利用シーン
 
 * デザイン通りの `width / height` を手入力したくない
 * Pug の mixin を使ったコンポーネント設計をしている

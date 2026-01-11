@@ -101,6 +101,42 @@
                 ],
                 "description": "処理タイプ"
               },
+              "altIndex": {
+                "type": "number",
+                "description": "imgArgs用：alt属性の引数インデックス（0開始、未指定時は1）"
+              },
+              "widthIndex": {
+                "type": "number",
+                "description": "imgArgs用：width属性の引数インデックス（0開始、未指定時は2）"
+              },
+              "heightIndex": {
+                "type": "number",
+                "description": "imgArgs用：height属性の引数インデックス（0開始、未指定時は3）"
+              },
+              "pcKey": {
+                "type": "string",
+                "description": "pictureOpts用：PC用画像のキー名（未指定時は'pc'）"
+              },
+              "spKey": {
+                "type": "string",
+                "description": "pictureOpts用：SP用画像のキー名（未指定時は'sp'）"
+              },
+              "pcWidthKey": {
+                "type": "string",
+                "description": "pictureOpts用：PC用widthのキー名（未指定時は'width'）"
+              },
+              "pcHeightKey": {
+                "type": "string",
+                "description": "pictureOpts用：PC用heightのキー名（未指定時は'height'）"
+              },
+              "spWidthKey": {
+                "type": "string",
+                "description": "pictureOpts用：SP用widthのキー名（未指定時は'widthSp'）"
+              },
+              "spHeightKey": {
+                "type": "string",
+                "description": "pictureOpts用：SP用heightのキー名（未指定時は'heightSp'）"
+              },
               "sources": {
                 "type": "array",
                 "description": "dataArray 用：1要素内に複数画像（PC/SP等）がある場合の定義",
